@@ -40,3 +40,4 @@ def report_for_date(msg):
     except Error as r:
         print(r)
 
+
