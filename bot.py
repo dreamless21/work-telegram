@@ -6,9 +6,13 @@ from random import shuffle, randint, choice
 import requests
 import json
 from lists import list_of_films, list_of_anime, list_gifts, dic_commands, card_values
+from dbconnectionalchemy import random_select_anime, concrect_select, select_all_anime_titles, get_user_balance, reg_user, balance_update
+import re
+import time
 
 bot = telebot.TeleBot(TOKEN)
 
+# region Greetings
 
 @bot.message_handler(commands=['start'])
 def welcome(msg):
@@ -17,18 +21,26 @@ def welcome(msg):
                                   f'На данный момент я нахожусь на этапе разработки, если у вас есть пожелания или идеи,'
                                   f'отправьте тэг /ideas и напишите мне сообщение, я обязательно передам его своему хозяину\n\n'
                                   f'С уже имеющимися функциями вы можете познакомиться нажав /commands')
+# endregion
 
+
+# region Ideas
 @bot.message_handler(commands=['ideas'])
 def send_idea_for_admin(msg):
     bot.send_message(msg.chat.id, 'Отлично, теперь напиши сообщение с идеей или пожеланием и я сразу передам его в нужное место, жду \U0001F642')
     bot.register_next_step_handler(msg, callback=send_idea)
+# endregion
 
 
+# region Commands
 @bot.message_handler(commands=['commands'])
 def send_commands(msg):
     for command, description in dic_commands.items():
         bot.send_message(msg.chat.id, f'{command} - {description}')
+# endregion
 
+
+# region Watch
 @bot.message_handler(commands=['watch'])
 def choose_watch(msg):
     markup = types.InlineKeyboardMarkup(row_width=1)
@@ -39,45 +51,61 @@ def choose_watch(msg):
     bot.send_message(msg.chat.id, 'Выберите категорию', reply_markup=markup)
 
 
-@bot.callback_query_handler(func=lambda msg: msg.data in
-                                             ['film', 'anime', 'serial', 'filter', 'random list_of_films',
-                                              'random list_of_anime', 'exit'])
+@bot.callback_query_handler(func=lambda callback: callback.data in
+                                             ['film', 'anime', 'serial', 'exit'])
 def choose_watch(callback):
-    if callback.data in ['random list_of_films', 'random list_of_anime']:
-        chooses_dic = {
-            'random list_of_films': list_of_films,
-            'random list_of_anime': list_of_anime
-        }
-        where = chooses_dic[callback.data]
-        number = randint(1, 200)
-        film = where.get(number)
-        bot.send_photo(callback.message.chat.id, photo=film["pic"]
-                                                   , caption=f'Название фильма - {film["name"]}\n\n'
-                                                   f'Год выпуска фильма - {film["year"]}\n\n'
-                                                   f'Рейтинг фильма - {film["mean_rate"]}')
-    elif callback.data == 'exit':
+    if callback.data == 'exit':
         bot.delete_message(callback.message.chat.id, callback.message.id)
+
     else:
         markup = types.InlineKeyboardMarkup(row_width=1)
         choose_dic = {
             'film': ['случайный фильм', 'фильмы', 'list_of_films'],
-            'anime': ['случайное аниме', 'аниме', 'list_of_anime'],
+            'anime': ['случайное аниме', 'аниме', 'random_select_anime'],
             'serial': ['случайный сериал', 'сериалы', 'list_of_serial']
         }
         choose_one, choose_two, choose_where = choose_dic[callback.data][0], choose_dic[callback.data][1], \
                                                choose_dic[callback.data][2]
-        markup.add(types.InlineKeyboardButton(text=f'Выбрать {choose_one}', callback_data=f'random {choose_where}'),
+        markup.add(types.InlineKeyboardButton(text=f'Выбрать {choose_one}', callback_data=f'{choose_where}'),
                    types.InlineKeyboardButton(text=f'Отфильтровать {choose_two} по дате', callback_data='filter'),
+                   types.InlineKeyboardButton(text=f'Найти {choose_two} по названию', callback_data='find'),
                    types.InlineKeyboardButton(text='Выход', callback_data='exit'))
         bot.edit_message_text(chat_id=callback.message.chat.id, text='Выбирайте далее', reply_markup=markup,
                               message_id=callback.message.id)
+# endregion
 
 
+# region Random selection
+@bot.callback_query_handler(func=lambda callback: callback.data in ['random_select_anime'])
+def random_selection(callback):
+    chooses_dic = {
+        'random_select_anime': random_select_anime,
+    }
+    selection_func = chooses_dic[callback.data]
+    mytuple = selection_func()
+    name, year, rating, pic, desc = mytuple
+    bot.send_photo(callback.message.chat.id, pic)
+    bot.send_message(callback.message.chat.id,
+                     f'\nНазвание аниме:\n{name}\n\nГод выпуска:\n{year}\n\nРейтинг:\n{rating}\n\nОписание аниме:\n{desc}')
+    bot.delete_message(callback.message.chat.id, callback.message.id)
+# endregion
 
-@bot.message_handler(commands=['start'])
-def start(msg):
-    bot.send_message(msg.chat.id, 'Hello, for get fact of random date, send me /getInfoRandomDate')
+# region regular expression find
+@bot.callback_query_handler(func=lambda callback: callback.data in ['find'])
+def regexp_find(callback):
+    bot.send_message(callback.message.chat.id, 'Введите часть названия аниме')
+    bot.register_next_step_handler(callback.message, callback=regxp)
 
+def regxp(msg):
+    list_titles = select_all_anime_titles()
+    pattern = msg.text
+    for title in list_titles:
+        if re.search(r'w*'+pattern+r'\w*', title[0], re.IGNORECASE):
+            bot.send_message(msg.chat.id, title[0])
+# endregion
+
+
+# region Free APIs
 @bot.message_handler(commands=['getInfoRandomDate'])
 def get_date(msg):
     request = requests.get('http://numbersapi.com/random/date?json')
@@ -95,8 +123,10 @@ def random(msg):
     advice = json.loads(requests.get('https://api.adviceslip.com/advice').text)
     bot.send_photo(msg.chat.id, image['image'], f'\n\nIf you bored do this: {activity["activity"]}\n\n'
                                                 f'Good advice to you: {advice["slip"]["advice"]}')
+# endregion
 
 
+# region Evaluations
 """
 Решение квадратных уравнений
 """
@@ -124,8 +154,10 @@ def solve1(msg):
         bot.send_message(msg.chat.id, f'Our roots is:\n{x1}, {x2}')
     else:
         bot.send_message(msg.chat.id, 'Equation has no roots')
+# endregion
 
 
+# region decision
 """
 Решатель всех вопросов
 """
@@ -137,37 +169,88 @@ def get_decider(msg):
                                   'тайная сущность призванная помогать вам в решениях своих вопросов, '
                                   'для того чтобы задать мне вопрос, напишите его в чат</b>\U0001F9E0', parse_mode='HTML')
     bot.register_next_step_handler(msg, callback=my_decision)
+# endregion
 
 
 
 
+# region Playzone
 """
 Play
 """
 @bot.message_handler(commands=['play'])
 def play(msg):
-    markup = types.ReplyKeyboardMarkup(row_width=1, one_time_keyboard=True)
+    markup = types.ReplyKeyboardMarkup(row_width=1, one_time_keyboard=True, resize_keyboard=True)
     dice = types.KeyboardButton(text='Dice 🎲')
-    darts = types.KeyboardButton(text='Darts 🎯')
-    slots = types.KeyboardButton(text='Slots 🎰')
-    basket = types.KeyboardButton(text='Basket 🏀')
-    football = types.KeyboardButton(text='Football ⚽')
-    bouling = types.KeyboardButton(text='Bouling 🎳')
-    markup.add(darts, dice, slots, basket, football, bouling)
+    # darts = types.KeyboardButton(text='Darts 🎯')
+    # slots = types.KeyboardButton(text='Slots 🎰')
+    # basket = types.KeyboardButton(text='Basket 🏀')
+    # football = types.KeyboardButton(text='Football ⚽')
+    # bouling = types.KeyboardButton(text='Bouling 🎳')
+    markup.add(dice)
     bot.send_message(msg.chat.id, 'Choose a game', reply_markup=markup)
 
 
-@bot.message_handler(func=lambda msg: msg.text in ['Dice 🎲', 'Darts 🎯', 'Slots 🎰', 'Basket 🏀', 'Football ⚽', 'Bouling 🎳'])
+@bot.message_handler(func=lambda msg: msg.text in ['Dice 🎲', 'Darts 🎯', 'Slots 🎰', 'Basket 🏀', 'Football ⚽', 'Bouling 🎳', 'Сыграть ещё', 'Выход'])
 def start_play(msg):
-    play_dic = {
-        'Dice 🎲': '🎲',
-        'Darts 🎯': '🎯',
-        'Slots 🎰': '🎰',
-        'Basket 🏀': '🏀',
-        'Football ⚽': '⚽',
-        'Bouling 🎳': '🎳'
-    }
-    bot.send_dice(msg.chat.id, play_dic[msg.text])
+    if msg.text == 'Выход':
+        bot.delete_message(msg.chat.id, msg.id - 1)
+    else:
+        global balance, telegram_id, balance_message
+        play_dic = {
+            'Dice 🎲': '🎲',
+            'Darts 🎯': '🎯',
+            'Slots 🎰': '🎰',
+            'Basket 🏀': '🏀',
+            'Football ⚽': '⚽',
+            'Bouling 🎳': '🎳'
+        }
+        balance = get_user_balance(msg.from_user.id)
+        telegram_id = msg.from_user.id
+        if balance is None:
+            full_name = f'{msg.from_user.first_name} {msg.from_user.last_name}'
+            user_name = msg.from_user.username
+            balance = reg_user(telegram_id, full_name, user_name)[0]
+        balance_message = bot.send_message(msg.chat.id, f'Твой баланс {balance}')
+        markup = types.InlineKeyboardMarkup()
+        markup.add(types.InlineKeyboardButton(text='10', callback_data='10'),
+                   types.InlineKeyboardButton(text='50', callback_data='50'),
+                   types.InlineKeyboardButton(text='100', callback_data='100'))
+        bot.send_message(msg.chat.id, 'Выбери ставку:', reply_markup=markup)
+
+@bot.callback_query_handler(func=lambda callback: callback.data in ['10', '50', '100', 'moreAndFour', 'lessFour'])
+def betting(callback):
+    global bet, balance
+    if callback.data in ['10', '50', '100']:
+        bet = int(callback.data)
+        balance = balance - bet
+        if balance >= 0:
+            markup = types.InlineKeyboardMarkup(row_width=1)
+            markup.add(types.InlineKeyboardButton(text='Выпадет значение 4 или больше', callback_data='moreAndFour'),
+                       types.InlineKeyboardButton(text='Выпадет значение меньше 4', callback_data='lessFour'))
+            bot.edit_message_text('Выбери исход:', callback.message.chat.id, callback.message.id, reply_markup=markup)
+        else:
+            bot.send_message(callback.message.chat.id, 'У вас недостаточно денег для совершения ставки')
+    else:
+        bot.delete_message(callback.message.chat.id, callback.message.id)
+        bot.delete_message(balance_message.chat.id, balance_message.id)
+        throw = bot.send_dice(callback.message.chat.id, '🎲')
+        value = throw.json['dice']['value']
+        time.sleep(5)
+        if (callback.data == 'moreAndFour' and value >= 4) or (callback.data == 'lessFour' and value < 4):
+            message = 'Ты выиграл'
+            balance += 2 * bet
+        else:
+            message = 'Ты проиграл'
+
+        balance = balance_update(telegram_id, balance)
+        markup = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
+        markup.add(types.KeyboardButton(text='Сыграть ещё'),
+                   types.KeyboardButton(text='Выход'))
+        bot.send_message(callback.message.chat.id, f'{message}\n\n'
+                                                   f'Твой баланс - {balance}', reply_markup=markup)
+# endregion
+
 
 
 """
@@ -180,6 +263,7 @@ def contact_us(msg):
     bot.send_contact(msg.chat.id, first_name='Nikita', last_name='Fokin', phone_number='89313062923')
 
 
+# region Polling
 """
 Make poll
 """
@@ -194,27 +278,22 @@ def make_poll(msg):
     question = msg.text[:msg.text.index('?') + 1]
     answers = msg.text[msg.text.index('?') + 2:].split(', ')
     bot.send_poll(msg.chat.id, question=question, options=answers, is_anonymous=True, allows_multiple_answers=False)
+# endregion
 
 
-"""Get user picture"""
-@bot.message_handler(commands=['getUserPic'])
-def send_user_pic(msg):
-    photo = bot.get_user_profile_photos(msg.from_user.id)
-    if photo.photos:
-        bot.send_message(msg.chat.id, photo.photos[0][0].file_id)
-    else:
-        bot.send_message(msg.chat.id, 'User has no photo')
 
+# region BlackJack
 #blackjack start--------------------------------------------------------------------------------------------------------
 @bot.message_handler(commands=['blackjack'])
 def blackjack(msg):
     global deck_id, user_scores, deck_chat_id
+    bot.send_message(ADMIN_CHAT_ID, msg.from_user.username)
     deck_chat_id = msg.chat.id
     user_scores = dict()
     deck_id = json.loads(requests.get('https://deckofcardsapi.com/api/deck/new/shuffle/?deck_count=1').text)['deck_id']
     markup = types.InlineKeyboardMarkup(row_width=1)
     markup.add(types.InlineKeyboardButton(text='Зарегистрироваться в игру', callback_data='registr'),
-               types.InlineKeyboardButton(text='Начать игру', callback_data='startgame'))
+               types.InlineKeyboardButton(text='Выход', callback_data='quit'))
     bot.send_message(deck_chat_id, 'Для того, чтобы сыграть в BlackJack \U0001F0CF, нажмите "Зарегистрироваться в игру" и '
                                    'следуйте дальнейшим указаниям', reply_markup=markup)
 
@@ -225,10 +304,15 @@ def in_game(msg):
     user_chat = msg.from_user.id
     user_scores[user] = user_scores.get(user, [0])
     user_scores.get(user).append(user_chat)
-    bot.send_message(deck_chat_id, f'{user} в игре!, {user_scores}')
+    bot.send_message(deck_chat_id, f'{user} в игре!')
+    if len(user_scores) > 1:
+        markup = types.InlineKeyboardMarkup(row_width=1)
+        markup.add(
+                   types.InlineKeyboardButton(text='Начать игру', callback_data='startgame'))
+        bot.send_message(msg.chat.id, 'Игра', reply_markup=markup)
 
 
-@bot.callback_query_handler(func=lambda callback: callback.data in ['registr', 'startgame'])
+@bot.callback_query_handler(func=lambda callback: callback.data in ['registr', 'startgame', 'quit'])
 def player_registration(callback):
     global user, users
     if callback.data == 'registr':
@@ -236,16 +320,18 @@ def player_registration(callback):
         markup.add(types.KeyboardButton('Принять участие в игре'))
         bot.send_message(deck_chat_id, 'Нажми на "Принять участие в игре для регистрации"\n\n'
                                        'После того, как все игроки зарегистрируются, нажмите "Начать игру"', reply_markup=markup)
-    else:
+    elif callback.data == 'startgame':
         bot.delete_message(deck_chat_id, callback.message.id)
         users = iter(user_scores.keys())
         user = next(users)
         start_game(callback.message, user)
+    else:
+        bot.delete_message(deck_chat_id, callback.message.id)
 
 
 def start_game(msg, user):
     global user_chat
-    bot.send_message(msg.chat.id, f'Сейчас ходит - {user}')
+    bot.send_message(deck_chat_id, f'Сейчас ходит - {user}')
     url = f'https://deckofcardsapi.com/api/deck/{deck_id}/draw/?count=2'
     cards = json.loads(requests.get(url).text)['cards']
     user_chat = user_scores[user][1]
@@ -273,42 +359,49 @@ def continue_play(msg):
         bot.send_photo(user_chat, photo=card['image'], caption=f'Твои очки - {user_scores[user][0]}')
         if user_scores[user][0] > 21:
             bot.send_message(user_chat, 'Ты перебрал, ход переходит к следующему игроку')
-            bot.send_message(deck_chat_id, f'{user} закончил свой ход')
-            try:
-                user = next(users)
-                start_game(msg, user)
-            except StopIteration as error:
-                end_game(msg)
+            try_next(msg)
         else:
             markup = types.ReplyKeyboardMarkup(one_time_keyboard=True, resize_keyboard=True)
             markup.add(types.KeyboardButton('Ещё одну карту'),
                        types.KeyboardButton('Мне хватит'))
             bot.send_message(user_chat, 'Что дальше?', reply_markup=markup)
     elif msg.text == 'Мне хватит':
-        bot.send_message(deck_chat_id, f'{user} закончил свой ход')
-        try:
-            user = next(users)
-            start_game(msg, user)
-        except StopIteration as error:
-            end_game(msg)
+        try_next(msg)
 
+def try_next(msg):
+    global user
+    bot.send_message(deck_chat_id, f'{user} закончил свой ход')
+    try:
+        user = next(users)
+        return start_game(msg, user)
+    except StopIteration as error:
+        return end_game(msg)
 
 def end_game(msg):
     global user_scores
-    flag = True
+    list_scores, list_winners = list(), list()
     for user in user_scores:
-        bot.send_message(deck_chat_id, f'{user} набрал - {user_scores[user][0]}')
-
-    for user in sorted(user_scores.items(), key=lambda x: x[1], reverse=True):
-        if user_scores[user[0]][0] <= 21:
-            bot.send_message(deck_chat_id, f'Итак, наш победитель - {user[0]}')
-            flag = False
-            break
-    if flag:
-        bot.send_message(deck_chat_id, f'Кажется оба игрока перебрали..\n\nНу что-ж, это ничья')
+        user_score = user_scores[user][0]
+        bot.send_message(deck_chat_id, f'{user} набрал - {user_score}')
+        if  user_score <= 21:
+            list_scores.append(user_score)
+    for user in user_scores:
+        if user_scores[user][0] <= 21 and user_scores[user][0] == max(list_scores):
+            list_winners.append(user)
+    if 0 < len(list_winners) < 2:
+        bot.send_message(deck_chat_id, f'Итак, наш победитель - {list_winners[0]}')
+    elif len(list_winners) == 0:
+        bot.send_message(deck_chat_id, f'Кажется все игроки перебрали..\n\nНу что-ж, это ничья')
+    else:
+        bot.send_message(deck_chat_id, f'Ого! У нас несколько победителей с количеством очков {max(list_scores)}')
+        for winner in list_winners:
+            bot.send_message(deck_chat_id, f'Один из наших чемпионов - {winner}')
+        bot.send_message(deck_chat_id, f'Спасибо за игру! Если хотите сыграть снова, напишите /blackjack')
 #blackjack ended--------------------------------------------------------------------------------------------------------
+# endregion
 
 
+# region Non ended content
 """
 Non ended content
 """
@@ -340,10 +433,12 @@ def message_reply(msg):
     #else:
         #with open(r'C:\Users\fokin.ni\PycharmProjects\work-telegram\tmp\aaa.jpg', 'rb') as file:
             #bot.send_photo(msg.chat.id, file)
-#Функции ожидания ответа юзера------------------------------------------------------------------------------------------
+# endregion
+
+# region w8 user callback
 def send_idea(msg):
     bot.send_message(ADMIN_CHAT_ID, f'Сообщение от {msg.from_user.first_name} {msg.from_user.last_name}\n\n'
-                                    f'{msg.text}')
+                                    f'Идея:\n{msg.text}')
     bot.send_message(msg.chat.id, 'Спасибо большое за фидбек, сообщение передано! \U0001F44D')
 
 def my_decision(msg):
@@ -352,6 +447,7 @@ def my_decision(msg):
 
 def get_card_value(card):
     return card_values[card['value']] if card['value'] in card_values.keys() else int(card['value'])
+# endregion
 
 
 

@@ -1,7 +1,10 @@
-users = dict()
-users['Liza'] = [0]
-users['Nikita'] = [0]
-print(users)
-users.get('Nikita').append(2131)
-users.get('Liza').append(2132)
-print(users.values())
+def f1():
+     print('Called by f2()')
+
+
+def f2():
+    print('Called by main func')
+    return f1()
+
+
+print(f2())
