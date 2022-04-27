@@ -1,11 +1,12 @@
 from mysql.connector import connect, Error
+from config import mysql_host, mysql_user, mysql_password
 
 
 def insert_proc(msg):
     try:
-        with connect(host='192.168.159.62',
-                     user='python',
-                     password='pythonmysql') as connection:
+        with connect(host=mysql_host,
+                     user=mysql_user,
+                     password=mysql_password) as connection:
 
             values = msg.text.split(';')
             db_insert = """
@@ -22,9 +23,9 @@ def insert_proc(msg):
 
 def report_for_date_mysql(dates):
     try:
-        with connect(host='192.168.159.62',
-                     user='python',
-                     password='pythonmysql') as connection:
+        with connect(host=mysql_host,
+                     user=mysql_user,
+                     password=mysql_password) as connection:
             date_from, date_to = map(int, dates.split())
             db_select = """
                     call foodv2.show_menu({}, {})""".format(date_from, date_to)
