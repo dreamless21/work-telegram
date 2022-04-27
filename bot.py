@@ -1,16 +1,37 @@
 import telebot
-from telebot import types, util
-from config import TOKEN, ADMIN_CHAT_ID
-from botfunction import insert_proc, report_for_date
-from random import shuffle, randint, choice
-import requests
-import json
-from lists import list_of_films, list_of_anime, list_gifts, dic_commands, card_values
-from dbconnectionalchemy import random_select_anime, concrect_select, select_all_anime_titles, get_user_balance, reg_user, balance_update
 import re
 import time
+import requests
+import json
+import uuid
+
+from telebot import types, util
+from config import TOKEN, ADMIN_CHAT_ID
+from botfunction import insert_proc, report_for_date_mysql
+from random import shuffle, randint, choice
+from lists import list_of_films, list_of_anime, list_gifts, dic_commands, card_values
+from DBconnect import random_select_anime, concrect_select, select_all_anime_titles, get_user_balance, reg_user, \
+    balance_update, films_filter, crypto_price_everyday, crypto_des, dice_payInOut
+from APIs_testing import get_something, search_anime
+
 
 bot = telebot.TeleBot(TOKEN)
+
+@bot.message_handler(commands=['api'])
+def send_gif(msg):
+    url = get_something()
+    bot.send_video(msg.chat.id, url['results'][0]['url'])
+
+@bot.message_handler(content_types=['photo'])
+def save_photo(msg):
+    file_id = bot.get_file(msg.photo[0].file_id)
+    download_file = bot.download_file(file_id.file_path)
+    my_path = f'./tmp/find_anime/{msg.from_user.username}+{msg.id}.jpg'
+    with open(my_path, 'wb') as new_file:
+        new_file.write(download_file)
+    bot.send_message(msg.chat.id, 'Кажется все окей..начинаю поиск..')
+    res = ' '.join(search_anime(my_path))
+    bot.send_message(msg.chat.id, f'Скорее всего ваше изображение из {res}')
 
 # region Greetings
 
@@ -23,7 +44,6 @@ def welcome(msg):
                                   f'С уже имеющимися функциями вы можете познакомиться нажав /commands')
 # endregion
 
-
 # region Ideas
 @bot.message_handler(commands=['ideas'])
 def send_idea_for_admin(msg):
@@ -31,14 +51,12 @@ def send_idea_for_admin(msg):
     bot.register_next_step_handler(msg, callback=send_idea)
 # endregion
 
-
 # region Commands
 @bot.message_handler(commands=['commands'])
 def send_commands(msg):
     for command, description in dic_commands.items():
         bot.send_message(msg.chat.id, f'{command} - {description}')
 # endregion
-
 
 # region Watch
 @bot.message_handler(commands=['watch'])
@@ -48,7 +66,7 @@ def choose_watch(msg):
                types.InlineKeyboardButton(text='Сериалы', callback_data='serial'),
                types.InlineKeyboardButton(text='Аниме', callback_data='anime'),
                types.InlineKeyboardButton(text='Выход', callback_data='exit'))
-    bot.send_message(msg.chat.id, 'Выберите категорию', reply_markup=markup)
+    bot.send_message(msg.chat.id, 'Выберите категорию:', reply_markup=markup)
 
 
 @bot.callback_query_handler(func=lambda callback: callback.data in
@@ -56,7 +74,6 @@ def choose_watch(msg):
 def choose_watch(callback):
     if callback.data == 'exit':
         bot.delete_message(callback.message.chat.id, callback.message.id)
-
     else:
         markup = types.InlineKeyboardMarkup(row_width=1)
         choose_dic = {
@@ -74,7 +91,6 @@ def choose_watch(callback):
                               message_id=callback.message.id)
 # endregion
 
-
 # region Random selection
 @bot.callback_query_handler(func=lambda callback: callback.data in ['random_select_anime'])
 def random_selection(callback):
@@ -90,6 +106,30 @@ def random_selection(callback):
     bot.delete_message(callback.message.chat.id, callback.message.id)
 # endregion
 
+# region Filtering
+@bot.callback_query_handler(func=lambda callback: callback.data == 'filter')
+def year_filter(callback):
+    bot.send_message(callback.message.chat.id, 'Введите год')
+    bot.register_next_step_handler(callback.message, callback=filtering)
+
+
+def filtering(msg):
+    global year
+    year = int(msg.text)
+    markup = types.InlineKeyboardMarkup(row_width=1)
+    markup.add(types.InlineKeyboardButton(text=f'Фильмы выпущенные в {year} году', callback_data='inThisYear'),
+               types.InlineKeyboardButton(text=f'Фильмы выпущенные раньше {year} года', callback_data='beforeThisYear'),
+               types.InlineKeyboardButton(text=f'Фильмы выпущенные позже {year} года', callback_data='afterThisYear'))
+    bot.send_message(msg.chat.id, 'Выберите тип фильтра:', reply_markup=markup)
+
+
+@bot.callback_query_handler(func=lambda callback: callback.data in ['inThisYear', 'beforeThisYear', 'afterThisYear'])
+def send_filtered_films(callback):
+    my_list = films_filter(year, callback.data)
+    for film in my_list:
+        bot.send_message(callback.message.chat.id, film)
+# endregion
+
 # region regular expression find
 @bot.callback_query_handler(func=lambda callback: callback.data in ['find'])
 def regexp_find(callback):
@@ -103,7 +143,6 @@ def regxp(msg):
         if re.search(r'w*'+pattern+r'\w*', title[0], re.IGNORECASE):
             bot.send_message(msg.chat.id, title[0])
 # endregion
-
 
 # region Free APIs
 @bot.message_handler(commands=['getInfoRandomDate'])
@@ -124,7 +163,6 @@ def random(msg):
     bot.send_photo(msg.chat.id, image['image'], f'\n\nIf you bored do this: {activity["activity"]}\n\n'
                                                 f'Good advice to you: {advice["slip"]["advice"]}')
 # endregion
-
 
 # region Evaluations
 """
@@ -156,7 +194,6 @@ def solve1(msg):
         bot.send_message(msg.chat.id, 'Equation has no roots')
 # endregion
 
-
 # region decision
 """
 Решатель всех вопросов
@@ -170,9 +207,6 @@ def get_decider(msg):
                                   'для того чтобы задать мне вопрос, напишите его в чат</b>\U0001F9E0', parse_mode='HTML')
     bot.register_next_step_handler(msg, callback=my_decision)
 # endregion
-
-
-
 
 # region Playzone
 """
@@ -232,6 +266,13 @@ def betting(callback):
         else:
             bot.send_message(callback.message.chat.id, 'У вас недостаточно денег для совершения ставки')
     else:
+        bet_type_dict = {
+            'moreAndFour': 1,
+            'lessFour': 2
+        }
+        trans_id = uuid.uuid4()
+        bet_type = bet_type_dict[callback.data]
+        dice_payInOut(bet, -1, f'{trans_id}_in', 1, telegram_id, bet_type)
         bot.delete_message(callback.message.chat.id, callback.message.id)
         bot.delete_message(balance_message.chat.id, balance_message.id)
         throw = bot.send_dice(callback.message.chat.id, '🎲')
@@ -240,6 +281,7 @@ def betting(callback):
         if (callback.data == 'moreAndFour' and value >= 4) or (callback.data == 'lessFour' and value < 4):
             message = 'Ты выиграл'
             balance += 2 * bet
+            dice_payInOut(2* bet, 1, f'{trans_id}_out', 1, telegram_id, bet_type, value)
         else:
             message = 'Ты проиграл'
 
@@ -251,8 +293,7 @@ def betting(callback):
                                                    f'Твой баланс - {balance}', reply_markup=markup)
 # endregion
 
-
-
+# region Contact us
 """
 Contact us
 """
@@ -261,7 +302,7 @@ def contact_us(msg):
     bot.send_message(msg.chat.id, 'Contact with us')
     bot.send_location(msg.chat.id, 59.913749, 30.350741)
     bot.send_contact(msg.chat.id, first_name='Nikita', last_name='Fokin', phone_number='89313062923')
-
+# endregion
 
 # region Polling
 """
@@ -279,8 +320,6 @@ def make_poll(msg):
     answers = msg.text[msg.text.index('?') + 2:].split(', ')
     bot.send_poll(msg.chat.id, question=question, options=answers, is_anonymous=True, allows_multiple_answers=False)
 # endregion
-
-
 
 # region BlackJack
 #blackjack start--------------------------------------------------------------------------------------------------------
@@ -400,6 +439,25 @@ def end_game(msg):
 #blackjack ended--------------------------------------------------------------------------------------------------------
 # endregion
 
+# region Admin
+@bot.message_handler(commands=['admin'])
+def adminka(msg):
+    if msg.from_user.id == ADMIN_CHAT_ID:
+        markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=1, one_time_keyboard=True)
+        markup.add(types.KeyboardButton(text='Загрузить сегодняшний отчет по крипте'),
+                   types.KeyboardButton(text='Admin command2'),
+                   types.KeyboardButton(text='Admin command3'))
+        bot.send_message(msg.chat.id, 'Админ команды', reply_markup=markup)
+
+    else:
+        bot.send_message(msg.chat.id, 'У вас нет доступа к админ командам')
+
+
+@bot.message_handler(func=lambda msg: msg.text == 'Загрузить сегодняшний отчет по крипте')
+def crypto_sink(msg):
+    message = crypto_des()
+    bot.send_message(msg.chat.id, message)
+# endregion
 
 # region Non ended content
 """
@@ -449,20 +507,20 @@ def get_card_value(card):
     return card_values[card['value']] if card['value'] in card_values.keys() else int(card['value'])
 # endregion
 
-
-
-
 #-----------------------------------------------------
-@bot.message_handler(content_types=['sticker'])
-def identity_sticker(msg):
-    list_gifts.append(msg.sticker.file_id)
-    bot.send_sticker(msg.chat.id, choice(list_gifts))
-    #bot.send_message(msg.chat.id, list_gifts)
-
-
 @bot.edited_message_handler(func=lambda msg: True)
 def reply_to_edited(msg):
     bot.reply_to(msg, 'I see everything, you edited your message, LIAR!\U0001F440')
+
+def report_for_date(msg):
+    dates = str(msg.text)
+    my_list = report_for_date_mysql(dates)
+    for dish in my_list:
+        date, name = dish[0], dish[1]
+        bot.send_message(msg.chat.id, f'{dish}')
+
+
+
 
 
 if __name__ == '__main__':

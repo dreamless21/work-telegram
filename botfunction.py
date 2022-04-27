@@ -1,8 +1,4 @@
 from mysql.connector import connect, Error
-import telebot
-import config
-
-bot = telebot.TeleBot(config.TOKEN)
 
 
 def insert_proc(msg):
@@ -18,25 +14,24 @@ def insert_proc(msg):
             with connection.cursor() as cursor:
                 cursor.execute(db_insert, values)
                 connection.commit()
-                bot.send_message(msg.chat.id, cursor.fetchone())
+                return cursor.fetchone()
 
     except Error as r:
         print(r)
 
 
-def report_for_date(msg):
+def report_for_date_mysql(dates):
     try:
         with connect(host='192.168.159.62',
                      user='python',
                      password='pythonmysql') as connection:
-            date_from, date_to = map(int, msg.text.split())
+            date_from, date_to = map(int, dates.split())
             db_select = """
                     call foodv2.show_menu({}, {})""".format(date_from, date_to)
             with connection.cursor() as cursor:
                 cursor.execute(db_select)
-                for row in cursor.fetchall():
-                    bot.send_message(msg.chat.id, '\n'.join(map(str, row)))
-
+                my_list = cursor.fetchall()
+                return my_list
     except Error as r:
         print(r)
 
