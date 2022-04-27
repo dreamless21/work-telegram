@@ -1,3 +1,4 @@
+from config import cmc_api_key
 from requests import Request, Session
 from requests.exceptions import ConnectionError, Timeout, TooManyRedirects
 import json
@@ -12,7 +13,7 @@ def get_data_from_cmc():
     }
     headers = {
         'Accepts': 'application/json',
-        'X-CMC_PRO_API_KEY': '844682ec-eda2-426d-97d9-a5decd2e8b80'
+        'X-CMC_PRO_API_KEY': cmc_api_key
     }
 
     session = Session()
