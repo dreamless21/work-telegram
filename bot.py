@@ -516,7 +516,6 @@ def report_for_date(msg):
     dates = str(msg.text)
     my_list = report_for_date_mysql(dates)
     for dish in my_list:
-        date, name = dish[0], dish[1]
         bot.send_message(msg.chat.id, f'{dish}')
 
 

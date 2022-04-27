@@ -6,9 +6,9 @@ from sqlalchemy.sql import func
 from random import randint
 from coin_market import get_data_from_cmc
 from datetime import date
+from config import alchemy_path_connect
 
-
-engine = create_engine('mysql+mysqlconnector://fokin.ni:sacred542x2!M@192.168.159.62:3306/database1')
+engine = create_engine(alchemy_path_connect)
 metadata = MetaData()
 session = Session(bind=engine)
 Base = declarative_base()
