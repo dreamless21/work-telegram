@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		{% extends 'articles/base.html' %}
+		{% load static %}
+		<meta http-equiv="X-UA-Compatible" content="IE=edge">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0,maximum-scale=1">
+		<title>main page</title>
+		<!-- Loading third party fonts -->
+		<link href="fonts/font-awesome.min.css" rel="stylesheet" type="text/css">
+		<link href="fonts/novecento-font/novecento-font.css" rel="stylesheet" >
+		<!-- Loading main css file -->
+		<!--link rel="stylesheet"  href="{% static 'bootstrap/css/style_tmp.css' %}"-->
+		<!--[if lt IE 9]>
+		<![endif]-->
+	    <meta charset="UTF-8">
+	</head>
+
+	{% block content %}
+	<body  style="color: #888;">
+		<div id="site-content">
+			<main class="main-content">
+				<div class="hero">
+					<div class="container">
+						<div class="row">
+							<div class="col-md-8">
+								<figure><img src="{% static article.pic %}" alt=""></figure>
+							</div>
+							<div class="col-md-4">
+								<div class="hero-content">
+									<h1 class="hero-title">{{article.name}}</h1>
+									<h2>Год выпуска</h2>
+									<p>{{article.year}}</p>
+									<h2>Рейтинг</h2>
+									<p>{{article.rating}}</p>
+									<form method="post">
+        								{% csrf_token %}
+        								{% if not in_fav %}
+										<button name="favorite" value="add" class="button">Add to favorite</button>
+        								{% else %}
+            							<button name="favorite" value="delete" class="button">Delete from favorite</button>
+										{% endif %}
+    								</form>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div> <!-- .hero-slider -->
+				
+				<div class="fullwidth-block" data-bg-color="#111113">
+					<div class="container">
+						<div class="row">
+							<div class="col-md-8">
+								<h2>Описание</h2>
+								<p>{{article.description}}</p>
+							</div>
+							<div class="col-md-4">
+								<div class="latest-news">
+									<h3>Latest News</h3>
+									<ul>
+										<li>
+											<h3 class="entry-title"><a href="#">Enim ad minim veniam quis nostrud</a></h3>
+											<small class="date">07/04/2014</small>
+										</li>
+										<li>
+											<h3 class="entry-title"><a href="#">Duis aute irure dolor in reprehenderit</a></h3>
+											<small class="date">07/04/2014</small>
+										</li>
+									</ul>
+								</div> <!-- .latest-news -->
+							</div>
+						</div> <!-- .row -->
+					</div> <!-- .container -->
+				</div> <!-- .fullwidth-block -->
+				<!--Сделать рецензии-->
+				<div class="fullwidth-block">
+					<div class="container">
+						<div class="row feature-list-section">
+							<div class="col-md-4">
+								<div class="feature">
+									<header>
+										<img src="images/icon-1.png" class="feature-icon">
+										<div class="feature-title-copy">
+											<h2 class="feature-title">Criminal Things</h2>
+											<small class="feature-subtitle">Lorem ipsum dolor sit</small>
+										</div>
+									</header>
+									<p>Lorem ipsum dolor sit amet, consectetur adipisicing elit. Molestias doloremque, quis, eaque minus harum modi eius veritatis consequuntur expedita impedit ad, facilis. Asperiores assumenda aperiam atque, accusamus cupiditate vero sit!</p>
+									<a href="#" class="more-link">Read More</a>
+								</div>
+							</div>
+							<div class="col-md-4">
+								<div class="feature">
+									<header>
+										<img src="images/icon-2.png" class="feature-icon">
+										<div class="feature-title-copy">
+											<h2 class="feature-title">Estate Planning</h2>
+											<small class="feature-subtitle">Lorem ipsum dolor sit</small>
+										</div>
+									</header>
+									<p>Lorem ipsum dolor sit amet, consectetur adipisicing elit. Molestias doloremque, quis, eaque minus harum modi eius veritatis consequuntur expedita impedit ad, facilis. Asperiores assumenda aperiam atque, accusamus cupiditate vero sit!</p>
+									<a href="#" class="more-link">Read More</a>
+								</div>
+							</div>
+							<div class="col-md-4">
+								<div class="feature">
+									<header>
+										<img src="images/icon-3.png" class="feature-icon">
+										<div class="feature-title-copy">
+											<h2 class="feature-title">Employment Law</h2>
+											<small class="feature-subtitle">Lorem ipsum dolor sit</small>
+										</div>
+									</header>
+									<p>Lorem ipsum dolor sit amet, consectetur adipisicing elit. Molestias doloremque, quis, eaque minus harum modi eius veritatis consequuntur expedita impedit ad, facilis. Asperiores assumenda aperiam atque, accusamus cupiditate vero sit!</p>
+									<a href="#" class="more-link">Read More</a>
+								</div>
+							</div>
+						</div>
+
+
+					</div>
+				</div>
+
+			</main> <!-- .main-content -->
+	<section style="background-color: #161719;">
+    <form method="POST">
+    {% csrf_token %}
+        <div class="form-control form-control-lg" style="width: 70%; height: 250px; padding: 10px; margin: auto;">
+            {{ form }}
+            <button class="btn btn-outline-success">Send</button>
+        </div>
+    </form>
+    {% if comments %}
+  <div class="container my-5 py-5">
+    <div class="row d-flex justify-content-center">
+
+      <div class="col-md-12 col-lg-10 text-white">
+          <div class="card-body p-4">
+        <h4 class="mb-0">Recent comments</h4>
+            <p class="fw-light mb-4 pb-2">Latest Comments section by users</p>
+              </div>
+        <div class="card text-dark">
+            {% for com in comments %}
+          <div class="card-body p-4">
+            <div class="d-flex flex-start">
+              <img class="rounded-circle shadow-1-strong me-3"
+                src="{{com.author.pic}}" alt="avatar" width="60"
+                height="60" />
+              <div>
+                  <h6 class="fw-bold mb-1"><a href="{% url 'articles:profile' com.author.slug %}" style="text-decoration: none; color: black;">{{com.author_name}}</a></h6>
+                <div class="d-flex align-items-center mb-3">
+                  <p class="mb-0">
+                    {{com.dt_published}}
+                    <span class="badge bg-success">OK</span>
+                  </p>
+                </div>
+                <p class="mb-0">
+                    {{com.comment_text}}
+                </p>
+              </div>
+            </div>
+          {% if user.id == com.author_id %}
+              <form method="post">
+                  {% csrf_token %}
+                  <button class="btn btn-danger" name="delete-button" value="{{com.id}}">Delete this message</button>
+              </form>
+
+          {% endif %}
+          </div>
+          <hr class="my-0" />
+            {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+    {% else %}
+    <p>Комментариев нет, вы можете оставить первый!</p>
+    {% endif %}
+	</section>
+
+
+		</div> <!-- #site-content -->
+	{% endblock %}
+		
+
+		<script src="js/jquery-1.11.1.min.js"></script>
+		<script src="js/plugins.js"></script>
+		<script src="js/app.js"></script>
+		
+	</body>
+
+</html>

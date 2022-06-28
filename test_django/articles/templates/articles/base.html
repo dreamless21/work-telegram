@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'bootstrap/css/bootstrap.css' %}">
+    <link rel="icon" type="image/x-icon" href="{% static 'bootstrap/css/static/favicon.svg' %}">
+    <script type="text/javascript" src="{% static 'bootstrap/js/bootstrap.bundle.js' %}"></script>
+    <meta charset="UTF-8">
+    <script>
+     $(document).ready(function(){
+        $('.dropdown-toggle').dropdown()
+    });
+</script>
+    <title>{{ title }}</title>
+</head>
+<body>
+<header class="p-3 bg-dark text-white border-bottom">
+    <div class="container">
+      <div class="d-flex flex-wrap align-items-center justify-content-center justify-content-lg-start">
+        <a href="/" class="d-flex align-items-center mb-2 mb-lg-0 text-white text-decoration-none">
+          <svg class="bi me-2" width="40" height="32" role="img" aria-label="Bootstrap"><use xlink:href="#bootstrap"/></svg>
+        </a>
+        <ul class="nav col-12 col-lg-auto me-lg-auto mb-2 justify-content-center mb-md-0">
+            <li><a href="{% url 'articles:home' %}" class="nav-link px-2 text-warning">Home</a></li>
+            <li><a href="{% url 'articles:articles' %}" class="nav-link px-2 text-white">Articles</a></li>
+            <li><a href="{% url 'articles:bets' %}" class="nav-link px-2 text-white">Bets</a></li>
+            <li><a href="{% url 'articles:menu' %}" class="nav-link px-2 text-white">Menu</a></li>
+            <li><a href="{% url 'articles:playing' %}" class="nav-link px-2 text-white">Playing</a></li>
+            <li><a href="http://t.me/lizadegu_bot" class="nav-link px-2 text-white">Chat with my bot</a></li>
+        </ul>
+        <div class="text-end">
+            {% if user.is_authenticated %}
+            <p>hello, {{user.username}}</p>
+            <div class="dropdown text-end">
+            <a href="#" class="d-block link-light text-decoration-none dropdown-toggle" id="dropdownUser1" data-bs-toggle="dropdown" aria-expanded="true">
+                <img src="{{user.profile.pic}}" alt="mdo" width="32" height="32" class="rounded-circle">
+            </a>
+            <ul class="dropdown-menu text-small" aria-labelledby="dropdownUser1">
+                <li><a class="dropdown-item" href="{% url 'articles:profile' user.profile.slug%}">Go to profile</a></li>
+                <li><hr class="dropdown-divider"></li>
+                <li><a class="dropdown-item" href="{% url 'articles:logout' %}">Sign out</a></li>
+          </ul>
+        </div>
+            {% else %}
+            <a class="btn btn-outline-light me-2" href="{% url 'articles:auth' %}">Login</a>
+            <a class="btn btn-warning" href="{% url 'articles:reg' %}">Sign-up</a>
+            {% endif %}
+        </div>
+      </div>
+    </div>
+  </header>
+<main>
+{% block content %}
+{% endblock %}
+</main>
+<footer class="d-flex flex-wrap justify-content-between align-items-center py-3 my-6 border-top bg-dark" style="padding: 20px;">
+    <div class="col-md-4 d-flex align-items-center">
+      <a href="/" class="mb-3 me-2 mb-md-0 text-muted text-decoration-none lh-1">
+        <img src="{% static 'bootstrap/css/static/favicon.svg' %}" width="30" height="30">
+      </a>
+      <span class="mb-3 mb-md-0 text-white">&copy; 2022 Company, Inc</span>
+    </div>
+    <ul class="nav col-md-4 justify-content-end list-unstyled d-flex">
+      <li class="ms-3"><a class="text-muted" href="https://t.me/dreamless21"><img src="{% static 'bootstrap/css/static/icons/twitter.svg' %}" width="30" height="30"></a></li>
+      <li class="ms-3"><a class="text-muted" href="https://t.me/dreamless21"><img src="{% static 'bootstrap/css/static/icons/facebook.svg' %}" width="30" height="30"></a></li>
+      <li class="ms-3"><a class="text-muted" href="https://t.me/dreamless21"><img src="{% static 'bootstrap/css/static/icons/instagram.svg' %}" width="30" height="30"></a></li>
+    </ul>
+  </footer>
+</body>
+</html>

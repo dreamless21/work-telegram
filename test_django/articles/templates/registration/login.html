@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    {% load static %}
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="{% static 'bootstrap/css/bootstrap.css' %}">
+    <title>{{ title }}</title>
+</head>
+  <body class="text-center sign-in">
+{% if form.errors %}
+    <p>Ваш логин и пароль не совпадают, пожалуйста попробуйте ещё.</p>
+{% endif %}
+{% if next %}
+{% if user.is_authenticated %}
+    <p>Ваш аккаунт не имеет прав для просмотра этой страницы. Для того чтобы продолжить, используйте аккаунт с доступом</p>
+{% else %}
+    <p>Пожалуйста войдите в аккаунт, чтобы просмотреть страницу</p>
+{% endif %}
+{% endif %}
+{% if message %}
+<p>{{message}}</p>
+{% else %}
+<main class="form-signin w-100 m-auto">
+  <form action="{% url 'articles:auth' %}" method="post">
+  {% csrf_token %}
+    <img class="mb-4" src="{% static 'bootstrap/css/static/logo.png' %}" alt="" width="72" height="57">
+    <h1 class="h3 mb-3 fw-normal">Please sign in</h1>
+    {% for field in form %}
+      <div class="form-floating">
+          {{ field }}
+          <label>{{field.name|title}}</label>
+      </div>
+    {% endfor %}
+    <div class="checkbox mb-3">
+      <label>
+        <input type="checkbox" value="remember-me"> Remember me
+      </label>
+    </div>
+    <input type="hidden" name="next" value="{{ request.GET.next }}"/>
+    <button class="w-100 btn btn-lg btn-primary" type="submit">Sign in</button>
+    <p class="mt-5 mb-3 text-muted">&copy; 2017–2022</p>
+  </form>
+</main>
+{% endif %}
+  </body>
+</html>

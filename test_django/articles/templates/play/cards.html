@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    {% extends 'articles/base.html' %}
+    {% load static %}
+    <meta charset="UTF-8">
+    <title>{{ title }}</title>
+</head>
+<body>
+{% block content %}
+{% if message %}
+    <img src="{{card_image}}">
+    <p style="color: white;">{{card}}</p>
+    <p style="color: white;">{{message}}</p>
+    <p style="color: white;">{{balance}}</p>
+{% else %}
+    <form method="post">
+        {% csrf_token %}
+        {{ form_card }}
+        <button class="btn btn-secondary">Сделать ставку</button>
+    </form>
+{% endif %}
+{% endblock %}
+</body>
+</html>

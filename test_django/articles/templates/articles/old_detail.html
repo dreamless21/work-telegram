@@ -1,0 +1,102 @@
+
+<!DOCTYPE html>
+<html lang="en" class="detail">
+<head>
+    {% extends 'articles/base.html' %}
+    {% load static %}
+    <meta charset="UTF-8">
+    <title>Title</title>
+
+</head>
+<body>
+<main>
+    {% block content %}
+    <div class="text-bg-dark p-3">
+    <p>{{ article.name }}</p>
+    <p>{{ article.year }}</p>
+    <p>{{ article.rating }}</p>
+    <img src="{% static article.pic %}" class="rounded">
+    <p>{{ article.description }}</p>
+</div>
+    <div>
+
+    <form method="post">
+        {% csrf_token %}
+        {% if not in_fav %}
+        <div style="margin: 30px;">
+            <button name="favorite" value="add" class="btn btn-danger">Add to favorite</button>
+        </div>
+        {% else %}
+        <div style="margin: 30px">
+            <button name="favorite" value="delete" class="btn btn-danger">Delete from favorite</button>
+        </div>
+
+        {% endif %}
+    </form>
+
+
+</div>
+
+<section style="background-color: gray">
+    <form method="POST">
+    {% csrf_token %}
+        <div class="form-control form-control-lg" style="width: 70%; height: 250px; padding: 10px; margin: auto;">
+            {{ form }}
+            <button class="btn btn-outline-success">Send</button>
+        </div>
+    </form>
+    {% if comments %}
+  <div class="container my-5 py-5">
+    <div class="row d-flex justify-content-center">
+
+      <div class="col-md-12 col-lg-10 text-white">
+          <div class="card-body p-4">
+        <h4 class="mb-0">Recent comments</h4>
+            <p class="fw-light mb-4 pb-2">Latest Comments section by users</p>
+              </div>
+        <div class="card text-dark">
+            {% for com in comments %}
+          <div class="card-body p-4">
+            <div class="d-flex flex-start">
+              <img class="rounded-circle shadow-1-strong me-3"
+                src="{{com.author.pic}}" alt="avatar" width="60"
+                height="60" />
+              <div>
+                  <h6 class="fw-bold mb-1"><a href="{% url 'articles:profile' com.author_name %}" style="text-decoration: none; color: black;">{{com.author_name}}</a></h6>
+                <div class="d-flex align-items-center mb-3">
+                  <p class="mb-0">
+                    {{com.dt_published}}
+                    <span class="badge bg-success">OK</span>
+                  </p>
+                </div>
+                <p class="mb-0">
+                    {{com.comment_text}}
+                </p>
+              </div>
+            </div>
+          {% if user.id == com.author_id %}
+              <form method="post">
+                  {% csrf_token %}
+                  <button class="btn btn-danger" name="delete-button" value="{{com.id}}">Delete this message</button>
+              </form>
+
+          {% endif %}
+          </div>
+          <hr class="my-0" />
+            {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+    {% else %}
+    <p>Комментариев нет, вы можете оставить первый!</p>
+    {% endif %}
+</section>
+
+
+
+
+{% endblock %}
+</main>
+</body>
+</html>

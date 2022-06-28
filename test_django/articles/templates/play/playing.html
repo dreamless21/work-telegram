@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    {% extends 'articles/base.html' %}
+    {% load static %}
+    <meta charset="UTF-8">
+    <title></title>
+</head>
+{% block content %}
+<body class="playing">
+<a href="{% url 'articles:dice' %}" class="btn btn-success">Play dice</a>
+<a href="{% url 'articles:cards' %}" class="btn btn-success">Play cards</a>
+{% endblock %}
+</body>
+</html>
